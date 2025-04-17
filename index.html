@@ -2,173 +2,128 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gray Guess</title>
     <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: sans-serif;
-            overflow: hidden; /* Prevent scrollbars */
-            background-color: #f0f0f0; /* Fallback background */
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: sans-serif; background-color: #ccc; }
+        body { display: flex; flex-direction: column; }
+        #squares, #buttons { display: flex; flex: 1; /* Make squares and buttons areas equal height */ }
+        #sq1, #sq2, #btnEqual, #btnNotEqual {
+            flex: 1; /* Each takes half the width of its container */
+            display: flex; /* Needed for potential centering if content added */
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
         }
-        #container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            width: 100%;
-        }
-        #squares, #buttons {
-            display: flex;
-            flex: 1; /* Each takes half the vertical space */
-            width: 100%;
-        }
-        #sq1, #sq2, #btn-equal, #btn-notequal {
-            flex: 1; /* Each takes half the horizontal space within its container */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 3em; /* Large text/symbol */
-            font-weight: bold;
-            border: none; /* No borders */
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box; /* Include padding/border in element's total width/height */
-            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-        }
-        #sq1, #sq2 {
-             /* Backgrounds set by JS */
-        }
-        #btn-equal, #btn-notequal {
+        #btnEqual, #btnNotEqual {
+            font-size: 5vh; /* Large font size relative to viewport height */
             cursor: pointer;
-            background-color: #e0e0e0;
-            color: #333;
+            border: none; /* No button border */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+             background-color: #e0e0e0; /* Default button background */
+             border-top: 1px solid #aaa; /* Slight separator */
         }
-        #btn-equal:active, #btn-notequal:active {
-            background-color: #cccccc; /* Basic feedback on press */
-        }
+         #btnEqual:active, #btnNotEqual:active {
+             background-color: #bdbdbd; /* Darker on press */
+         }
         #info {
-            position: absolute; /* Overlay info */
-            bottom: 50%; /* Position just above buttons */
-            left: 0;
-            width: 100%;
-            text-align: center;
             padding: 5px 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            color: white;
+            text-align: center;
             font-size: 0.9em;
-            pointer-events: none; /* Allow clicks through to buttons */
-            visibility: hidden; /* Hidden initially */
-            z-index: 10;
-        }
-        #info span {
-             display: block; /* Stack info lines */
-             line-height: 1.3;
+            background-color: #eee;
+            flex-shrink: 0; /* Prevent info area from shrinking */
+            border-top: 1px solid #aaa;
         }
     </style>
 </head>
 <body>
-    <div id="container">
-        <div id="squares">
-            <div id="sq1"></div>
-            <div id="sq2"></div>
-        </div>
-        <div id="buttons">
-            <button id="btn-equal">=</button>
-            <button id="btn-notequal">≠</button>
-        </div>
+    <div id="squares">
+        <div id="sq1"></div>
+        <div id="sq2"></div>
     </div>
-
-    <div id="info">
-        <span id="result"></span>
-        <span id="values"></span>
-        <span id="score">Score: 0.0% (0/0)</span>
+    <div id="buttons">
+        <button id="btnEqual">=</button>
+        <button id="btnNotEqual">≠</button> <!-- ≠ is the 'not equal' symbol -->
     </div>
+    <div id="info">--</div>
 
     <script>
         const sq1 = document.getElementById('sq1');
         const sq2 = document.getElementById('sq2');
-        const btnEqual = document.getElementById('btn-equal');
-        const btnNotEqual = document.getElementById('btn-notequal');
-        const infoDiv = document.getElementById('info');
-        const resultSpan = document.getElementById('result');
-        const valuesSpan = document.getElementById('values');
-        const scoreSpan = document.getElementById('score');
+        const btnEqual = document.getElementById('btnEqual');
+        const btnNotEqual = document.getElementById('btnNotEqual');
+        const info = document.getElementById('info');
 
-        let gray1Value = 0;
-        let gray2Value = 0;
-        let areEqual = false;
+        let gray1, gray2;
+        let areEqual;
         let correctGuesses = 0;
         let totalGuesses = 0;
 
-        function setGray(element, grayValue) {
-            element.style.backgroundColor = `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
-        }
+        function nextRound() {
+            // 1. Choose base gray
+            gray1 = Math.floor(Math.random() * 256);
 
-        function generateGrays() {
-            infoDiv.style.visibility = 'hidden'; // Hide info for new round
+            // 2. Decide if the other is equal or different (50% chance)
+            const shouldBeEqual = Math.random() < 0.5;
 
-            gray1Value = Math.floor(Math.random() * 256); // 0-255
-
-            // 50% chance to be equal
-            if (Math.random() < 0.5) {
-                gray2Value = gray1Value;
+            if (shouldBeEqual) {
+                gray2 = gray1;
                 areEqual = true;
             } else {
-                const delta = Math.max(1, Math.round(gray1Value * 0.01));
-                const min = Math.max(0, gray1Value - delta);
-                const max = Math.min(255, gray1Value + delta);
-
-                // Pick a different value within the range
-                do {
-                    // Ensure range has more than one value if possible
-                    if (min === max) {
-                         // This happens only if gray1=0, delta=0 OR gray1=255, delta=0
-                         // But delta is Math.max(1, ...) so it's always at least 1
-                         // This case should theoretically not be reachable with delta >= 1
-                         // If somehow min=max, force inequality (e.g. if gray1=0, pick 1)
-                         gray2Value = (gray1Value === 0) ? 1 : gray1Value -1;
-                         if (gray2Value < 0 || gray2Value > 255) gray2Value = (gray1Value === 255) ? 254 : gray1Value + 1; // Fallback if -1 is invalid
-                    } else {
-                        gray2Value = Math.floor(Math.random() * (max - min + 1)) + min;
-                    }
-                } while (gray2Value === gray1Value); // Ensure they are actually different
                 areEqual = false;
+                // Calculate 1% delta (must be at least 1)
+                const delta = Math.max(1, Math.round(gray1 * 0.01));
+                const min = Math.max(0, gray1 - delta);
+                const max = Math.min(255, gray1 + delta);
+
+                // Pick a random gray in the range, *excluding* gray1
+                let attempts = 0; // Safety break
+                do {
+                    gray2 = Math.floor(Math.random() * (max - min + 1)) + min;
+                    attempts++;
+                } while (gray2 === gray1 && attempts < 50); // Ensure difference, prevent infinite loop if min=max=gray1 (shouldn't happen with delta>=1)
+
+                // Fallback if somehow still equal (highly unlikely with delta>=1)
+                 if (gray2 === gray1) {
+                    if (gray1 > 0) gray2 = gray1 - 1;
+                    else gray2 = gray1 + 1; // Ensure it's different
+                 }
             }
 
-            setGray(sq1, gray1Value);
-            setGray(sq2, gray2Value);
+            // 3. Apply colors
+            sq1.style.backgroundColor = `rgb(${gray1},${gray1},${gray1})`;
+            sq2.style.backgroundColor = `rgb(${gray2},${gray2},${gray2})`;
+
+            // 4. Clear previous result message but keep stats
+            updateInfo("--");
         }
 
-        function handleGuess(userGuessedEqual) {
+        function updateInfo(message) {
+             const percentage = totalGuesses === 0 ? 0 : Math.round((correctGuesses / totalGuesses) * 100);
+             info.textContent = `${message} | Vals: ${gray1}, ${gray2} | Correct: ${percentage}% (${correctGuesses}/${totalGuesses})`;
+        }
+
+        function handleGuess(guessedEqual) {
             totalGuesses++;
-            const correct = (userGuessedEqual === areEqual);
+            const correct = (guessedEqual === areEqual);
+            let resultMsg;
 
             if (correct) {
                 correctGuesses++;
-                resultSpan.textContent = "Correct!";
-                resultSpan.style.color = '#7FFF7F'; // Light green
+                resultMsg = "Correct!";
             } else {
-                resultSpan.textContent = "Incorrect!";
-                resultSpan.style.color = '#FF7F7F'; // Light red
+                resultMsg = "Incorrect.";
             }
 
-            valuesSpan.textContent = `Grays: ${gray1Value}, ${gray2Value}`;
-            const percentage = totalGuesses === 0 ? 0 : (correctGuesses / totalGuesses * 100);
-            scoreSpan.textContent = `Score: ${percentage.toFixed(1)}% (${correctGuesses}/${totalGuesses})`;
-
-            infoDiv.style.visibility = 'visible';
-
-            // Generate next pair immediately after showing result
-            generateGrays();
+            updateInfo(resultMsg);
+            // Delay starting next round slightly to allow user to see result/values
+            setTimeout(nextRound, 1000);
         }
 
-        btnEqual.onclick = () => handleGuess(true);
-        btnNotEqual.onclick = () => handleGuess(false);
+        btnEqual.addEventListener('click', () => handleGuess(true));
+        btnNotEqual.addEventListener('click', () => handleGuess(false));
 
-        // Initial setup
-        generateGrays();
+        // Initial round
+        nextRound();
     </script>
 </body>
 </html>
