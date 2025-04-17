@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gray Guess</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; font-family: sans-serif; background-color: #eee; }
+        .container { display: flex; width: 100%; height: 50vh; }
+        .square { flex: 1; height: 100%; }
+        .controls { display: flex; padding: 15px; gap: 15px; }
+        button {
+            flex: 1;
+            padding: 25px 10px;
+            font-size: 2.5em;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f8f8f8;
+            touch-action: manipulation; /* Improve touch responsiveness */
+        }
+        .feedback { padding: 10px 15px; text-align: center; font-size: 1.1em; min-height: 2.5em;}
+        .score { padding: 5px 15px; text-align: center; font-size: 1em; color: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="sq1" class="square"></div>
+        <div id="sq2" class="square"></div>
+    </div>
+
+    <div class="controls">
+        <button id="btnEq" onclick="handleGuess(true)">=</button>
+        <button id="btnNeq" onclick="handleGuess(false)">≠</button>
+    </div>
+
+    <div id="feedback" class="feedback"></div>
+    <div id="score" class="score">Correct: 0.0% (0/0)</div>
+
+    <script>
+        const sq1 = document.getElementById('sq1');
+        const sq2 = document.getElementById('sq2');
+        const feedbackEl = document.getElementById('feedback');
+        const scoreEl = document.getElementById('score');
+
+        let g1, g2;
+        let totalGuesses = 0;
+        let correctGuesses = 0;
+
+        function setGray(el, grayVal) {
+            el.style.backgroundColor = `rgb(${grayVal}, ${grayVal}, ${grayVal})`;
+        }
+
+        function nextRound() {
+            // Pick first gray
+            g1 = Math.floor(Math.random() * 256);
+
+            // Pick second gray within 1% range of first
+            const delta = Math.max(1, Math.round(g1 * 0.01)); // Ensure delta is at least 1 for difference possibility
+            const minG2 = Math.max(0, g1 - delta);
+            const maxG2 = Math.min(255, g1 + delta);
+            g2 = Math.floor(Math.random() * (maxG2 - minG2 + 1)) + minG2;
+
+            // Set square colors
+            setGray(sq1, g1);
+            setGray(sq2, g2);
+
+            // Optionally clear previous feedback slightly delayed for visibility
+            // setTimeout(() => { feedbackEl.textContent = ''; }, 500);
+        }
+
+        function handleGuess(guessedEqual) {
+            totalGuesses++;
+            const actualEqual = (g1 === g2);
+            const isCorrect = (guessedEqual === actualEqual);
+
+            if (isCorrect) {
+                correctGuesses++;
+                feedbackEl.textContent = `Correct! Values were ${g1} and ${g2}.`;
+                feedbackEl.style.color = 'green';
+            } else {
+                feedbackEl.textContent = `Incorrect. Values were ${g1} and ${g2}. They were ${actualEqual ? 'Equal' : 'Not Equal'}.`;
+                 feedbackEl.style.color = 'red';
+            }
+
+            // Update score
+            const percentage = totalGuesses > 0 ? (correctGuesses / totalGuesses * 100).toFixed(1) : 0.0;
+            scoreEl.textContent = `Correct: ${percentage}% (${correctGuesses}/${totalGuesses})`;
+
+            // Prepare next round
+            nextRound();
+        }
+
+        // Initial round on load
+        document.addEventListener('DOMContentLoaded', nextRound);
+    </script>
+
+</body>
+</html>
